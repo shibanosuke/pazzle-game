@@ -346,8 +346,14 @@ function lock(){
     spawnClearParticles(full);
     setTimeout(()=>{
       if(!gameRunning){clearingRows=[];locking=false;return;}
-      // remove marked rows (descending so indices stay valid)
-      full.sort((a,b)=>b-a).forEach(r=>{board.splice(r,1);board.unshift(new Array(COLS).fill(0));});
+      // rebuild the board rather than splicing rows one-by-one: splicing+unshifting
+      // multiple rows by their original indices shifts the remaining target indices
+      // out from under you, which either leaves full rows uncleared or wipes out an
+      // unrelated row above them (the "auto-leveling" bug).
+      const fullSet=new Set(full);
+      const kept=board.filter((row,idx)=>!fullSet.has(idx));
+      const freshRows=Array.from({length:full.length},()=>new Array(COLS).fill(0));
+      board=freshRows.concat(kept);
       clearingRows=[];
       locking=false;
       applyClearScore(full.length);
@@ -459,7 +465,7 @@ function applyChaosEffect(eff){
   else if(eff==='テレポート'){
     teleportMode=true;
     const id=setInterval(()=>{
-      if(!gameRunning||!teleportMode)return;
+      if(!gameRunning||!teleportMode||locking)return;
       const maxX=COLS-piece.shape[0].length;
       const nx=Math.max(0,Math.floor(Math.random()*(maxX+1)));
       const orig=piece.x;piece.x=nx;
@@ -470,7 +476,7 @@ function applyChaosEffect(eff){
   else if(eff==='乱回転'){
     randRotateMode=true;
     const id=setInterval(()=>{
-      if(!gameRunning||!randRotateMode)return;
+      if(!gameRunning||!randRotateMode||locking)return;
       rotate(Math.random()<0.5?1:-1);
     },1600);
     chaosIntervals.push(id);
@@ -478,7 +484,7 @@ function applyChaosEffect(eff){
   else if(eff==='ガーベジ'){
     garbageMode=true;
     const id=setInterval(()=>{
-      if(!gameRunning||!garbageMode)return;
+      if(!gameRunning||!garbageMode||locking)return;
       board.shift();
       const hole=Math.floor(Math.random()*COLS);
       const row=new Array(COLS).fill('#555');row[hole]=0;
