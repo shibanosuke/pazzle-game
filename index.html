@@ -7,11 +7,15 @@
   --text:#f2f4fa;--muted:#7c8199;
   --f-display:'Orbitron','Trebuchet MS',var(--font-sans),sans-serif;
   --f-pixel:'Press Start 2P','Courier New',monospace;
-  font-family:var(--f-display);padding:1rem;background:var(--bg);border-radius:16px;
-  display:flex;gap:1.5rem;justify-content:center;align-items:flex-start;color:var(--text)
+  font-family:var(--f-display);color:var(--text);
+  position:fixed;inset:0;width:100%;height:100%;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:clamp(6px,2vw,20px);overflow:auto;touch-action:none;
 }
+#game-shell{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:900px;width:100%;max-height:100%}
+#game-row{display:flex;gap:clamp(8px,2vw,24px);justify-content:center;align-items:flex-start;width:100%;flex-wrap:wrap}
+.side{width:clamp(100px,18vw,150px);display:flex;flex-direction:column;gap:10px;flex-shrink:0}
 canvas{display:block;border:0.5px solid rgba(255,255,255,.08);border-radius:4px;background:#0a0a0f}
-#side{width:140px;display:flex;flex-direction:column;gap:12px}
 .panel{position:relative;overflow:hidden;background:var(--panel);border:0.5px solid var(--panel-border);border-radius:12px;padding:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 10px rgba(0,0,0,.5)}
 .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55}
 .panel-title{font-family:var(--f-display);font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.09em;font-weight:700}
@@ -32,8 +36,8 @@ button.start-btn:hover{opacity:.9}
 #overlay h2{font-family:var(--f-pixel);font-size:18px;font-weight:400;letter-spacing:.04em;line-height:1.6;text-shadow:0 0 16px var(--accent),0 0 36px var(--accent);animation:title-flicker 2.6s infinite}
 @keyframes title-flicker{0%,90%,100%{opacity:1}92%{opacity:.65}94%{opacity:1}97%{opacity:.7}}
 #overlay p{font-family:var(--f-display);font-size:12px;opacity:.75;text-align:center;max-width:190px;line-height:1.7;letter-spacing:.01em}
-#wrap{position:relative}
-canvas#board{border:2px solid #fff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 34px rgba(94,203,255,.18);transition:box-shadow .35s ease}
+#wrap{position:relative;width:clamp(160px,44vw,240px);max-width:100%}
+canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 34px rgba(94,203,255,.18);transition:box-shadow .35s ease}
 #wrap.chaos-glow canvas#board{box-shadow:0 0 0 1px rgba(255,61,110,.4),0 0 26px rgba(255,61,110,.6),0 0 60px rgba(255,61,110,.3)}
 #flash-overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;border-radius:4px}
 #levelup-banner{font-family:var(--f-pixel);position:absolute;top:12px;left:50%;transform:translateX(-50%) scale(.75);color:#fff;font-size:10px;letter-spacing:.03em;text-shadow:0 0 14px var(--accent),0 0 28px var(--accent);opacity:0;pointer-events:none;transition:all .25s ease;white-space:nowrap}
@@ -46,71 +50,119 @@ canvas#board{border:2px solid #fff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 
   45%{opacity:1;transform:translate(-50%,-50%) scale(1)}
   100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}
 }
-#keys{font-family:var(--f-display);font-size:11px;color:var(--muted);line-height:1.9;letter-spacing:.01em}
+#keys{font-family:var(--f-display);font-size:11px;color:var(--muted);line-height:1.6;letter-spacing:.01em;text-align:center;max-width:520px}
+#controls{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,28px);width:100%;flex-wrap:wrap;padding:6px 0}
+.ctrl-col{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ctrl-group{display:flex;gap:8px}
+.ctrl-btn{
+  min-width:50px;min-height:46px;padding:0 10px;border-radius:10px;
+  background:var(--panel);border:1px solid var(--panel-border);color:var(--text);
+  font-family:var(--f-display);font-size:17px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.ctrl-btn:active{background:var(--accent);color:#04040a;transform:scale(.93)}
+.ctrl-btn.wide{min-width:88px;font-size:12px;letter-spacing:.06em}
+.ctrl-btn.harddrop{background:linear-gradient(135deg,var(--accent2),#ff7a9c);color:#1a0007;border-color:transparent}
+.ctrl-btn.harddrop:active{filter:brightness(1.2)}
 #chaos-warn{font-family:var(--f-display);background:rgba(255,204,0,.12);border:0.5px solid rgba(255,204,0,.35);color:var(--warn);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;letter-spacing:.03em;display:none;animation:chaos-pulse 0.6s ease-in-out infinite}
 @keyframes chaos-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.03)}}
 #combo{display:inline-block}
 #combo.combo-hot{color:var(--accent2);text-shadow:0 0 14px currentColor}
 #combo.burst{animation:combo-burst .45s cubic-bezier(.2,1.5,.4,1)}
 @keyframes combo-burst{0%{transform:scale(2.1);text-shadow:0 0 26px currentColor}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+
+@media (max-width:680px),(max-aspect-ratio:4/5){
+  #game-row{flex-direction:column;align-items:center}
+  #wrap{order:-1;width:min(78vw,300px)}
+  .side{width:100%;max-width:340px;flex-direction:row;flex-wrap:wrap;justify-content:center}
+  .side .panel{flex:1 1 100px;min-width:96px}
+  #keys{font-size:10px;max-width:300px}
+  .ctrl-btn{min-width:46px;min-height:44px;font-size:15px}
+}
+@media (max-height:640px){
+  #wrap{width:min(50vh,200px)}
+  #keys{display:none}
+}
+
 </style>
 
 <div id="app">
-  <div id="side">
-    <div class="panel">
-      <div class="panel-title">ホールド <span style="font-size:10px;opacity:.6">[Shift]</span></div>
-      <canvas id="hold-canvas" width="80" height="60"></canvas>
-    </div>
-    <div class="panel">
-      <div class="panel-title">スコア</div>
-      <div class="big-num" id="score">0</div>
-      <div class="gauge"><div class="gauge-fill" id="score-bar"></div></div>
-      <div class="small-label">レベル <span id="level">1</span></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">ライン</div>
-      <div class="big-num" id="lines">0</div>
-      <div class="gauge"><div class="gauge-fill" id="lines-bar"></div></div>
-      <div class="small-label">次のレベルまで <span id="lines-remain">10</span></div>
-    </div>
-    <div id="chaos-warn">⚡ カオス発動中！</div>
-    <div class="panel">
-      <div class="panel-title">カオスゲージ</div>
-      <div style="height:8px;background:var(--surface-0);border-radius:4px;overflow:hidden;margin-bottom:6px">
-        <div id="chaos-bar" style="height:100%;width:0%;background:var(--fill-warning);border-radius:4px;transition:width .3s"></div>
+  <div id="game-shell">
+    <div id="game-row">
+      <div id="side-left" class="side">
+        <div class="panel">
+          <div class="panel-title">ホールド <span style="font-size:10px;opacity:.6">[Shift]</span></div>
+          <canvas id="hold-canvas" width="80" height="60"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-title">スコア</div>
+          <div class="big-num" id="score">0</div>
+          <div class="gauge"><div class="gauge-fill" id="score-bar"></div></div>
+          <div class="small-label">レベル <span id="level">1</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">ライン</div>
+          <div class="big-num" id="lines">0</div>
+          <div class="gauge"><div class="gauge-fill" id="lines-bar"></div></div>
+          <div class="small-label">次のレベルまで <span id="lines-remain">10</span></div>
+        </div>
       </div>
-      <div id="effect-label"></div>
-    </div>
-    <div class="panel" id="keys-panel">
-      <div class="panel-title">操作</div>
-      <div id="keys">
-        ← → 移動<br>↑ 回転<br>↓ ソフトドロップ<br>Space ハードドロップ<br>Shift ホールド<br>Z 反時計回り
+
+      <div id="wrap">
+        <canvas id="board" width="220" height="440"></canvas>
+        <div id="flash-overlay"></div>
+        <div id="levelup-banner"></div>
+        <div id="clear-banner"></div>
+        <div id="overlay">
+          <h2>CHAOS BLOCKS</h2>
+          <p>ラインを消すとカオスゲージが溜まる。ゲージが満タンになると…？</p>
+          <button class="start-btn" onclick="startGame()">スタート</button>
+        </div>
+      </div>
+
+      <div id="side-right" class="side">
+        <div class="panel">
+          <div class="panel-title">NEXT</div>
+          <canvas id="next-canvas" width="80" height="200"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-title">コンボ</div>
+          <div class="big-num" id="combo">×0</div>
+        </div>
+        <div id="chaos-warn">⚡ カオス発動中！</div>
+        <div class="panel">
+          <div class="panel-title">カオスゲージ</div>
+          <div class="gauge" style="height:8px;margin-top:0"><div id="chaos-bar" class="gauge-fill" style="background:linear-gradient(90deg,var(--warn),#fff3b0)"></div></div>
+          <div id="effect-label"></div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="wrap">
-    <canvas id="board" width="220" height="440"></canvas>
-    <div id="flash-overlay"></div>
-    <div id="levelup-banner"></div>
-    <div id="clear-banner"></div>
-    <div id="overlay">
-      <h2>CHAOS BLOCKS</h2>
-      <p>ラインを消すとカオスゲージが溜まる。ゲージが満タンになると…？</p>
-      <button class="start-btn" onclick="startGame()">スタート</button>
+    <div id="controls">
+      <div class="ctrl-col">
+        <button class="ctrl-btn wide" id="btn-hold" title="ホールド">HOLD</button>
+        <div class="ctrl-group">
+          <button class="ctrl-btn" id="btn-rotate-ccw" title="反時計回り">⟲</button>
+          <button class="ctrl-btn" id="btn-rotate-cw" title="回転">⟳</button>
+        </div>
+      </div>
+      <div class="ctrl-col">
+        <div class="ctrl-group">
+          <button class="ctrl-btn" id="btn-left" title="左">◀</button>
+          <button class="ctrl-btn" id="btn-down" title="ソフトドロップ">▼</button>
+          <button class="ctrl-btn" id="btn-right" title="右">▶</button>
+        </div>
+      </div>
+      <button class="ctrl-btn wide harddrop" id="btn-harddrop" title="ハードドロップ">HARD DROP</button>
     </div>
-  </div>
 
-  <div id="side">
-    <div class="panel">
-      <div class="panel-title">NEXT</div>
-      <canvas id="next-canvas" width="80" height="200"></canvas>
-    </div>
-    <div class="panel">
-      <div class="panel-title">コンボ</div>
-      <div class="big-num" id="combo">×0</div>
+    <div id="keys">
+      ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り
     </div>
   </div>
+</div>
 </div>
 
 <script>
@@ -655,27 +707,34 @@ function loop(){
   if(gameRunning)animId=requestAnimationFrame(loop);
 }
 
-// ---- Keyboard with DAS (hold to auto-repeat) ----
+// ---- Input repeat system (DAS-style hold-to-repeat), shared by keyboard and on-screen buttons ----
 const DAS_DELAY=150,DAS_RATE=45;
-const heldKeys={};
+const heldActions={};
+function startRepeatAction(id,fn,delay=DAS_DELAY,rate=DAS_RATE){
+  stopRepeatAction(id);
+  fn();
+  heldActions[id]={t1:setTimeout(()=>{
+    heldActions[id].t2=setInterval(fn,rate);
+  },delay)};
+}
+function stopRepeatAction(id){
+  const h=heldActions[id];
+  if(h){clearTimeout(h.t1);clearInterval(h.t2);delete heldActions[id];}
+}
+function stopAllRepeats(){Object.keys(heldActions).forEach(stopRepeatAction);}
+
 function doMoveLR(key){
   if(!gameRunning||locking)return;
   const base=key==='ArrowLeft'?-1:1;
   const dx=invertMode?-base:base;
   if(move(dx,0)){SFX.move();schedDrop();}
 }
-function startRepeat(key){
-  stopRepeat(key);
-  doMoveLR(key);
-  heldKeys[key]={t1:setTimeout(()=>{
-    heldKeys[key].t2=setInterval(()=>doMoveLR(key),DAS_RATE);
-  },DAS_DELAY)};
+function doSoftDropTick(){
+  if(!gameRunning||locking)return;
+  SFX.softdrop();softDrop();
 }
-function stopRepeat(key){
-  const h=heldKeys[key];
-  if(h){clearTimeout(h.t1);clearInterval(h.t2);delete heldKeys[key];}
-}
-function stopAllRepeats(){Object.keys(heldKeys).forEach(stopRepeat);}
+function startRepeat(key){startRepeatAction(key,()=>doMoveLR(key));}
+function stopRepeat(key){stopRepeatAction(key);}
 
 document.addEventListener('keydown',e=>{
   if(!gameRunning)return;
@@ -685,7 +744,11 @@ document.addEventListener('keydown',e=>{
     if(e.repeat)return; // we handle repeat ourselves
     startRepeat(e.key);
   }
-  else if(e.key==='ArrowDown'){e.preventDefault();if(!locking){SFX.softdrop();softDrop();}}
+  else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(e.repeat)return;
+    startRepeatAction('softdrop',doSoftDropTick,80,60);
+  }
   else if(e.key==='ArrowUp'){e.preventDefault();if(!locking){rotate(invertMode?-1:1);SFX.rotate();}}
   else if(e.key==='z'||e.key==='Z'){e.preventDefault();if(!locking){rotate(-1);SFX.rotate();}}
   else if(e.key===' '){e.preventDefault();hardDrop();}
@@ -693,8 +756,35 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{
   if(e.key==='ArrowLeft'||e.key==='ArrowRight')stopRepeat(e.key);
+  else if(e.key==='ArrowDown')stopRepeatAction('softdrop');
 });
 window.addEventListener('blur',stopAllRepeats);
+
+// ---- On-screen control pad (works with mouse clicks and touch taps alike via Pointer Events) ----
+function bindHoldButton(id,start,stop){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const onDown=e=>{e.preventDefault();ensureAudio();start();};
+  const onUp=e=>{e.preventDefault();stop();};
+  el.addEventListener('pointerdown',onDown);
+  el.addEventListener('pointerup',onUp);
+  el.addEventListener('pointerleave',onUp);
+  el.addEventListener('pointercancel',onUp);
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+}
+function bindTapButton(id,fn){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();ensureAudio();fn();});
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+}
+bindHoldButton('btn-left',()=>startRepeat('ArrowLeft'),()=>stopRepeat('ArrowLeft'));
+bindHoldButton('btn-right',()=>startRepeat('ArrowRight'),()=>stopRepeat('ArrowRight'));
+bindHoldButton('btn-down',()=>startRepeatAction('softdrop',doSoftDropTick,80,60),()=>stopRepeatAction('softdrop'));
+bindTapButton('btn-rotate-cw',()=>{if(gameRunning&&!locking){rotate(invertMode?-1:1);SFX.rotate();}});
+bindTapButton('btn-rotate-ccw',()=>{if(gameRunning&&!locking){rotate(-1);SFX.rotate();}});
+bindTapButton('btn-harddrop',()=>{if(gameRunning)hardDrop();});
+bindTapButton('btn-hold',()=>{if(gameRunning)doHold();});
 
 // Touch controls: drag left/right = move, tap = rotate, swipe down = hard drop, drag down = soft drop
 let touchX=null,touchY=null,touchStartX=null,touchStartY=null,touchMoved=false,touchStartT=0;
