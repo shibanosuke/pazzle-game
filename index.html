@@ -229,6 +229,8 @@ const SFX={
   levelup:()=>{[440,554,659,880].forEach((f,i)=>beep(f,0.1,'triangle',0.05,null,i*0.06));},
   chaos:()=>{beep(880,0.3,'sawtooth',0.05,220);beep(880,0.3,'sawtooth',0.04,220,0.15);},
   gameover:()=>{[392,330,262,196].forEach((f,i)=>beep(f,0.22,'triangle',0.06,null,i*0.16));},
+  gift:()=>{beep(660,0.08,'sine',0.05);beep(880,0.1,'sine',0.05,null,0.07);},
+  garbageAdd:()=>{beep(130,0.16,'sawtooth',0.06,65);},
 };
 
 const canvas=document.getElementById('board');
@@ -454,7 +456,16 @@ function applyChaosEffect(eff){
     for(let r=0;r<ROWS;r++){if(board[r].some(c=>c))filledRows.push(r);}
     if(filledRows.length){
       const r=filledRows[Math.floor(Math.random()*filledRows.length)];
-      board.splice(r,1);board.unshift(new Array(COLS).fill(0));
+      // give this a visible flash + sound instead of silently vanishing a row
+      // (an unexplained row disappearing looks exactly like a bug otherwise)
+      clearingRows=[r];
+      SFX.gift();
+      spawnPopup('LINE GIFT!');
+      setTimeout(()=>{
+        if(!gameRunning||locking){clearingRows=[];return;} // a real clear is in progress; skip to avoid index clash
+        if(board[r]){board.splice(r,1);board.unshift(new Array(COLS).fill(0));}
+        clearingRows=[];
+      },220);
     }
   }
   else if(eff==='ミラー'){
@@ -489,6 +500,10 @@ function applyChaosEffect(eff){
       const hole=Math.floor(Math.random()*COLS);
       const row=new Array(COLS).fill('#555');row[hole]=0;
       board.push(row);
+      // audible/visible warning that the stack just rose by one row
+      SFX.garbageAdd();
+      shake(3,10);
+      spawnPopup('GARBAGE!');
       if(collides())endGame();
     },2200);
     chaosIntervals.push(id);
