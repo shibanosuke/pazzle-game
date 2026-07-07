@@ -199,9 +199,9 @@ const SHAPES=[
 ];
 // each mino type always renders in its own fixed color
 const COLORS=['#4ec9ff','#ffcc00','#b388ff','#3d5afe','#ff6b35','#00e676','#ff4444','#69ffda','#ff3ea5'];
-const CHAOS_EFFECTS=['反転','暗転','幽霊','地震','倍速','縮小','色変','ガーベジ','虹色','テレポート','乱回転','巨大化','スロー','一列消去','ミラー','爆発','ワンパターン'];
-let board,piece,nextQueue,hold,holdUsed,score,lines,level,combo,chaosGauge,chaosActive,chaosTimer,chaosEffect,gameRunning,gameOver,animId,dropTimer,dropInterval,darkMode,invertMode,ghostMode,quakeX,quakeTimer,miniMode;
-let chaosCount,garbageMode,rainbowMode,teleportMode,randRotateMode,giantMode,mirrorMode,darkFlicker,chaosIntervals,hueBase;
+const CHAOS_EFFECTS=['反転','暗転','地震','倍速','ガーベジ','虹色','テレポート','乱回転','巨大化','爆発','ワンパターン'];
+let board,piece,nextQueue,hold,holdUsed,score,lines,level,combo,chaosGauge,chaosActive,chaosTimer,chaosEffect,gameRunning,gameOver,animId,dropTimer,dropInterval,darkMode,invertMode,quakeX,quakeTimer;
+let chaosCount,garbageMode,rainbowMode,teleportMode,randRotateMode,giantMode,darkFlicker,chaosIntervals,hueBase;
 let monoMode=false,monoShapeIndex=0;
 let particles=[],popups=[],shakeTimer=0,shakeAmp=0,clearingRows=[],locking=false;
 
@@ -246,7 +246,6 @@ const SFX={
   levelup:()=>{[440,554,659,880].forEach((f,i)=>beep(f,0.1,'triangle',0.05,null,i*0.06));},
   chaos:()=>{beep(880,0.3,'sawtooth',0.05,220);beep(880,0.3,'sawtooth',0.04,220,0.15);},
   gameover:()=>{[392,330,262,196].forEach((f,i)=>beep(f,0.22,'triangle',0.06,null,i*0.16));},
-  gift:()=>{beep(660,0.08,'sine',0.05);beep(880,0.1,'sine',0.05,null,0.07);},
   garbageAdd:()=>{beep(130,0.16,'sawtooth',0.06,65);},
   explosion:()=>{noiseBurst(0.4,0.22);beep(70,0.4,'sawtooth',0.1,28);beep(50,0.5,'sine',0.08,20,0.04);},
   mono:()=>{beep(300,0.06,'square',0.04);beep(300,0.06,'square',0.04,null,0.09);beep(300,0.09,'square',0.04,null,0.18);},
@@ -264,10 +263,8 @@ function randPiece(){
   return{shape:s.map(r=>[...r]),color:COLORS[si],x:Math.floor((COLS-s[0].length)/2),y:0};
 }
 function fillQueue(){while(nextQueue.length<5)nextQueue.push(randPiece())}
-function mirrorShape(shape){return shape.map(row=>[...row].reverse());}
 function getNextPiece(){
   let p=nextQueue.shift();fillQueue();
-  if(mirrorMode)p.shape=mirrorShape(p.shape);
   return p;
 }
 
@@ -284,8 +281,8 @@ function clearChaosIntervals(){
 function startGame(){
   board=newBoard();nextQueue=[];hold=null;holdUsed=false;
   score=0;lines=0;level=1;combo=0;chaosGauge=0;chaosActive=false;chaosEffect='';chaosCount=0;
-  gameRunning=true;gameOver=false;darkMode=false;invertMode=false;ghostMode=false;quakeX=0;quakeTimer=0;miniMode=false;
-  garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;giantMode=false;mirrorMode=false;darkFlicker=false;hueBase=0;monoMode=false;
+  gameRunning=true;gameOver=false;darkMode=false;invertMode=false;quakeX=0;quakeTimer=0;
+  garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;giantMode=false;darkFlicker=false;hueBase=0;monoMode=false;
   particles=[];popups=[];shakeTimer=0;shakeAmp=0;clearingRows=[];locking=false;
   ensureAudio();
   clearChaosIntervals();
@@ -463,34 +460,9 @@ function applyChaosEffect(eff){
     chaosIntervals.push(id);
   }
   else if(eff==='反転')invertMode=true;
-  else if(eff==='幽霊')ghostMode=true;
-  else if(eff==='縮小')miniMode=true;
   else if(eff==='巨大化')giantMode=true;
   else if(eff==='地震')quakeTimer=999999; // cleared on chaos end
   else if(eff==='倍速')dropInterval=Math.max(40,dropInterval/2);
-  else if(eff==='スロー')dropInterval=Math.round(dropInterval*1.8);
-  else if(eff==='色変'){board.forEach(row=>row.forEach((_,i,a)=>{if(a[i])a[i]=COLORS[Math.floor(Math.random()*COLORS.length)]}));}
-  else if(eff==='一列消去'){
-    const filledRows=[];
-    for(let r=0;r<ROWS;r++){if(board[r].some(c=>c))filledRows.push(r);}
-    if(filledRows.length){
-      const r=filledRows[Math.floor(Math.random()*filledRows.length)];
-      // give this a visible flash + sound instead of silently vanishing a row
-      // (an unexplained row disappearing looks exactly like a bug otherwise)
-      clearingRows=[r];
-      SFX.gift();
-      spawnPopup('LINE GIFT!');
-      setTimeout(()=>{
-        if(!gameRunning||locking){clearingRows=[];return;} // a real clear is in progress; skip to avoid index clash
-        if(board[r]){board.splice(r,1);board.unshift(new Array(COLS).fill(0));}
-        clearingRows=[];
-      },220);
-    }
-  }
-  else if(eff==='ミラー'){
-    mirrorMode=true;
-    piece.shape=mirrorShape(piece.shape);
-  }
   else if(eff==='虹色')rainbowMode=true;
   else if(eff==='テレポート'){
     teleportMode=true;
@@ -574,7 +546,7 @@ function explodeStack(){
 function triggerChaos(){
   chaosActive=true;chaosGauge=0;chaosCount++;
   clearChaosIntervals();
-  darkMode=invertMode=ghostMode=miniMode=giantMode=mirrorMode=darkFlicker=false;
+  darkMode=invertMode=giantMode=darkFlicker=false;
   garbageMode=rainbowMode=teleportMode=randRotateMode=monoMode=false;
   quakeTimer=0;
   document.getElementById('wrap').classList.add('chaos-glow');
@@ -597,7 +569,7 @@ function triggerChaos(){
   // chaos episodes get a little longer as they escalate
   const duration=6000+Math.min(3000,chaosCount*250);
   chaosTimer=setTimeout(()=>{
-    chaosActive=false;darkMode=false;invertMode=false;ghostMode=false;miniMode=false;giantMode=false;mirrorMode=false;darkFlicker=false;
+    chaosActive=false;darkMode=false;invertMode=false;giantMode=false;darkFlicker=false;
     garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;monoMode=false;
     quakeTimer=0;quakeX=0;
     clearChaosIntervals();
@@ -743,10 +715,8 @@ function draw(){
     for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(board[r][c])drawCell(ctx,c,r,board[r][c]);
     if(!locking){
       // ghost
-      if(!ghostMode){
-        const g=ghostPos();
-        for(let r2=0;r2<g.shape.length;r2++)for(let c2=0;c2<g.shape[0].length;c2++)if(g.shape[r2][c2])drawCell(ctx,g.x+c2,g.y+r2,piece.color,0.2,pieceSz);
-      }
+      const g=ghostPos();
+      for(let r2=0;r2<g.shape.length;r2++)for(let c2=0;c2<g.shape[0].length;c2++)if(g.shape[r2][c2])drawCell(ctx,g.x+c2,g.y+r2,piece.color,0.2,pieceSz);
       for(let r2=0;r2<piece.shape.length;r2++)for(let c2=0;c2<piece.shape[0].length;c2++)if(piece.shape[r2][c2])drawCell(ctx,piece.x+c2,piece.y+r2,piece.color,1,pieceSz);
     }
   }
