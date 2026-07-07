@@ -51,6 +51,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
   100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}
 }
 #keys{font-family:var(--f-display);font-size:11px;color:var(--muted);line-height:1.6;letter-spacing:.01em;text-align:center;max-width:520px}
+#version-footer{font-family:var(--f-display);font-size:10px;color:var(--muted);opacity:.55;letter-spacing:.04em;text-align:center;margin-top:2px}
 #controls{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,28px);width:100%;flex-wrap:wrap;padding:6px 0}
 .ctrl-col{display:flex;flex-direction:column;align-items:center;gap:8px}
 .ctrl-group{display:flex;gap:8px}
@@ -179,6 +180,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
     <div id="keys">
       ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り
     </div>
+    <div id="version-footer">Latest Update: 2026.07.07 (v4.3)</div>
   </div>
 </div>
 
@@ -197,9 +199,10 @@ const SHAPES=[
 ];
 // each mino type always renders in its own fixed color
 const COLORS=['#4ec9ff','#ffcc00','#b388ff','#3d5afe','#ff6b35','#00e676','#ff4444','#69ffda','#ff3ea5'];
-const CHAOS_EFFECTS=['反転','暗転','幽霊','地震','倍速','縮小','色変','ガーベジ','虹色','テレポート','乱回転','巨大化','スロー','一列消去','ミラー'];
+const CHAOS_EFFECTS=['反転','暗転','幽霊','地震','倍速','縮小','色変','ガーベジ','虹色','テレポート','乱回転','巨大化','スロー','一列消去','ミラー','爆発','ワンパターン'];
 let board,piece,nextQueue,hold,holdUsed,score,lines,level,combo,chaosGauge,chaosActive,chaosTimer,chaosEffect,gameRunning,gameOver,animId,dropTimer,dropInterval,darkMode,invertMode,ghostMode,quakeX,quakeTimer,miniMode;
 let chaosCount,garbageMode,rainbowMode,teleportMode,randRotateMode,giantMode,mirrorMode,darkFlicker,chaosIntervals,hueBase;
+let monoMode=false,monoShapeIndex=0;
 let particles=[],popups=[],shakeTimer=0,shakeAmp=0,clearingRows=[],locking=false;
 
 // ---- Sound (WebAudio, generated beeps - no external files) ----
@@ -216,6 +219,20 @@ function beep(freq,dur=0.08,type='square',vol=0.05,slideTo=null,delay=0){
   o.connect(g);g.connect(audioCtx.destination);
   o.start(t);o.stop(t+dur+0.02);
 }
+function noiseBurst(dur=0.35,vol=0.2){
+  if(!audioCtx)return;
+  const size=Math.max(1,Math.floor(audioCtx.sampleRate*dur));
+  const buffer=audioCtx.createBuffer(1,size,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<size;i++)data[i]=(Math.random()*2-1)*(1-i/size);
+  const src=audioCtx.createBufferSource();
+  src.buffer=buffer;
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(vol,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+  src.connect(g);g.connect(audioCtx.destination);
+  src.start();
+}
 const SFX={
   move:()=>beep(220,0.03,'square',0.02),
   rotate:()=>beep(330,0.05,'square',0.03),
@@ -231,6 +248,8 @@ const SFX={
   gameover:()=>{[392,330,262,196].forEach((f,i)=>beep(f,0.22,'triangle',0.06,null,i*0.16));},
   gift:()=>{beep(660,0.08,'sine',0.05);beep(880,0.1,'sine',0.05,null,0.07);},
   garbageAdd:()=>{beep(130,0.16,'sawtooth',0.06,65);},
+  explosion:()=>{noiseBurst(0.4,0.22);beep(70,0.4,'sawtooth',0.1,28);beep(50,0.5,'sine',0.08,20,0.04);},
+  mono:()=>{beep(300,0.06,'square',0.04);beep(300,0.06,'square',0.04,null,0.09);beep(300,0.09,'square',0.04,null,0.18);},
 };
 
 const canvas=document.getElementById('board');
@@ -240,7 +259,7 @@ const hctx=document.getElementById('hold-canvas').getContext('2d');
 
 function newBoard(){return Array.from({length:ROWS},()=>new Array(COLS).fill(0))}
 function randPiece(){
-  const si=Math.floor(Math.random()*SHAPES.length);
+  const si=monoMode?monoShapeIndex:Math.floor(Math.random()*SHAPES.length);
   const s=SHAPES[si];
   return{shape:s.map(r=>[...r]),color:COLORS[si],x:Math.floor((COLS-s[0].length)/2),y:0};
 }
@@ -266,7 +285,7 @@ function startGame(){
   board=newBoard();nextQueue=[];hold=null;holdUsed=false;
   score=0;lines=0;level=1;combo=0;chaosGauge=0;chaosActive=false;chaosEffect='';chaosCount=0;
   gameRunning=true;gameOver=false;darkMode=false;invertMode=false;ghostMode=false;quakeX=0;quakeTimer=0;miniMode=false;
-  garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;giantMode=false;mirrorMode=false;darkFlicker=false;hueBase=0;
+  garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;giantMode=false;mirrorMode=false;darkFlicker=false;hueBase=0;monoMode=false;
   particles=[];popups=[];shakeTimer=0;shakeAmp=0;clearingRows=[];locking=false;
   ensureAudio();
   clearChaosIntervals();
@@ -508,13 +527,55 @@ function applyChaosEffect(eff){
     },2200);
     chaosIntervals.push(id);
   }
+  else if(eff==='爆発'){
+    explodeStack();
+  }
+  else if(eff==='ワンパターン'){
+    monoMode=true;
+    monoShapeIndex=Math.floor(Math.random()*SHAPES.length);
+    // immediately overwrite the upcoming queue so the streak starts right away,
+    // not just whenever the existing queue happens to cycle out
+    nextQueue=nextQueue.map(()=>randPiece());
+    SFX.mono();
+    spawnPopup('ワンパターン!');
+  }
+}
+
+function explodeStack(){
+  // find the topmost row that has any locked block in it
+  let top=ROWS;
+  for(let r=0;r<ROWS;r++){if(board[r].some(c=>c)){top=r;break;}}
+  const hitCells=[];
+  if(top<ROWS){
+    const blastRows=Math.min(4,ROWS-top);
+    const width=Math.min(COLS,4+Math.floor(Math.random()*4));
+    const startCol=Math.floor(Math.random()*(COLS-width+1));
+    for(let r=top;r<top+blastRows;r++){
+      for(let c=startCol;c<startCol+width;c++){
+        if(board[r][c]){hitCells.push({r,c,color:board[r][c]});board[r][c]=0;}
+      }
+    }
+  }
+  hitCells.forEach(({r,c,color})=>{
+    for(let k=0;k<5;k++){
+      particles.push({
+        x:c*SZ+SZ/2,y:r*SZ+SZ/2,
+        vx:(Math.random()-0.5)*11,vy:-Math.random()*8-3,
+        size:Math.random()*5+3,color,life:1,decay:0.016+Math.random()*0.02
+      });
+    }
+  });
+  SFX.explosion();
+  shake(9,26);
+  flashBoard('#ff6a1a',0.5);
+  spawnPopup('BOOM!!');
 }
 
 function triggerChaos(){
   chaosActive=true;chaosGauge=0;chaosCount++;
   clearChaosIntervals();
   darkMode=invertMode=ghostMode=miniMode=giantMode=mirrorMode=darkFlicker=false;
-  garbageMode=rainbowMode=teleportMode=randRotateMode=false;
+  garbageMode=rainbowMode=teleportMode=randRotateMode=monoMode=false;
   quakeTimer=0;
   document.getElementById('wrap').classList.add('chaos-glow');
   SFX.chaos();
@@ -537,7 +598,7 @@ function triggerChaos(){
   const duration=6000+Math.min(3000,chaosCount*250);
   chaosTimer=setTimeout(()=>{
     chaosActive=false;darkMode=false;invertMode=false;ghostMode=false;miniMode=false;giantMode=false;mirrorMode=false;darkFlicker=false;
-    garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;
+    garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;monoMode=false;
     quakeTimer=0;quakeX=0;
     clearChaosIntervals();
     document.getElementById('chaos-warn').style.display='none';
@@ -575,9 +636,10 @@ function burstCombo(){
   comboEl.classList.add('burst');
 }
 
-function flashBoard(){
+function flashBoard(color='#ffffff',opacity=0.3){
   const f=document.getElementById('flash-overlay');
-  f.style.transition='none';f.style.opacity='.3';
+  f.style.background=color;
+  f.style.transition='none';f.style.opacity=String(opacity);
   requestAnimationFrame(()=>{f.style.transition='opacity .3s ease';f.style.opacity='0';});
 }
 
