@@ -39,6 +39,8 @@ button.start-btn:hover{opacity:.9}
 #wrap{position:relative;width:clamp(160px,44vw,240px);max-width:100%}
 canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 34px rgba(94,203,255,.18);transition:box-shadow .35s ease}
 #wrap.chaos-glow canvas#board{box-shadow:0 0 0 1px rgba(255,61,110,.4),0 0 26px rgba(255,61,110,.6),0 0 60px rgba(255,61,110,.3)}
+#wrap.explosion-punch{animation:explosion-punch .35s cubic-bezier(.2,1.8,.3,1)}
+@keyframes explosion-punch{0%{transform:scale(1)}25%{transform:scale(1.07)}100%{transform:scale(1)}}
 #flash-overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;border-radius:4px}
 #levelup-banner{font-family:var(--f-pixel);position:absolute;top:12px;left:50%;transform:translateX(-50%) scale(.75);color:#fff;font-size:10px;letter-spacing:.03em;text-shadow:0 0 14px var(--accent),0 0 28px var(--accent);opacity:0;pointer-events:none;transition:all .25s ease;white-space:nowrap}
 #levelup-banner.show{opacity:1;transform:translateX(-50%) scale(1)}
@@ -180,7 +182,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
     <div id="keys">
       ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り
     </div>
-    <div id="version-footer">Latest Update: 2026.07.07 (v4.3)</div>
+    <div id="version-footer">Latest Update: 2026.07.08 (v4.5)</div>
   </div>
 </div>
 
@@ -219,7 +221,7 @@ function beep(freq,dur=0.08,type='square',vol=0.05,slideTo=null,delay=0){
   o.connect(g);g.connect(audioCtx.destination);
   o.start(t);o.stop(t+dur+0.02);
 }
-function noiseBurst(dur=0.35,vol=0.2){
+function noiseBurst(dur=0.35,vol=0.2,delay=0){
   if(!audioCtx)return;
   const size=Math.max(1,Math.floor(audioCtx.sampleRate*dur));
   const buffer=audioCtx.createBuffer(1,size,audioCtx.sampleRate);
@@ -228,10 +230,11 @@ function noiseBurst(dur=0.35,vol=0.2){
   const src=audioCtx.createBufferSource();
   src.buffer=buffer;
   const g=audioCtx.createGain();
-  g.gain.setValueAtTime(vol,audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+  const t=audioCtx.currentTime+delay;
+  g.gain.setValueAtTime(vol,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   src.connect(g);g.connect(audioCtx.destination);
-  src.start();
+  src.start(t);
 }
 const SFX={
   move:()=>beep(220,0.03,'square',0.02),
@@ -247,7 +250,13 @@ const SFX={
   chaos:()=>{beep(880,0.3,'sawtooth',0.05,220);beep(880,0.3,'sawtooth',0.04,220,0.15);},
   gameover:()=>{[392,330,262,196].forEach((f,i)=>beep(f,0.22,'triangle',0.06,null,i*0.16));},
   garbageAdd:()=>{beep(130,0.16,'sawtooth',0.06,65);},
-  explosion:()=>{noiseBurst(0.4,0.22);beep(70,0.4,'sawtooth',0.1,28);beep(50,0.5,'sine',0.08,20,0.04);},
+  explosion:()=>{
+    noiseBurst(0.55,0.3);
+    noiseBurst(0.25,0.22,0.05);
+    beep(65,0.45,'sawtooth',0.12,25);
+    beep(45,0.6,'sine',0.1,18,0.05);
+    beep(180,0.12,'square',0.08,40,0.02);
+  },
   mono:()=>{beep(300,0.06,'square',0.04);beep(300,0.06,'square',0.04,null,0.09);beep(300,0.09,'square',0.04,null,0.18);},
 };
 
@@ -519,8 +528,8 @@ function explodeStack(){
   for(let r=0;r<ROWS;r++){if(board[r].some(c=>c)){top=r;break;}}
   const hitCells=[];
   if(top<ROWS){
-    const blastRows=Math.min(4,ROWS-top);
-    const width=Math.min(COLS,4+Math.floor(Math.random()*4));
+    const blastRows=Math.min(6,ROWS-top);
+    const width=Math.min(COLS,6+Math.floor(Math.random()*(COLS-5)));
     const startCol=Math.floor(Math.random()*(COLS-width+1));
     for(let r=top;r<top+blastRows;r++){
       for(let c=startCol;c<startCol+width;c++){
@@ -528,19 +537,68 @@ function explodeStack(){
       }
     }
   }
+  // fiery debris: lots of small fast sparks per destroyed cell
   hitCells.forEach(({r,c,color})=>{
-    for(let k=0;k<5;k++){
+    for(let k=0;k<10;k++){
       particles.push({
         x:c*SZ+SZ/2,y:r*SZ+SZ/2,
-        vx:(Math.random()-0.5)*11,vy:-Math.random()*8-3,
-        size:Math.random()*5+3,color,life:1,decay:0.016+Math.random()*0.02
+        vx:(Math.random()-0.5)*16,vy:-Math.random()*12-4,
+        size:Math.random()*5+3,color,life:1,decay:0.014+Math.random()*0.018
+      });
+    }
+    // a couple of bigger, slower flying chunks for weight/drama
+    for(let k=0;k<2;k++){
+      particles.push({
+        x:c*SZ+SZ/2,y:r*SZ+SZ/2,
+        vx:(Math.random()-0.5)*9,vy:-Math.random()*9-2,
+        size:Math.random()*8+8,color,life:1,decay:0.01+Math.random()*0.01
       });
     }
   });
+  // a burst of pure fire-colored sparks across the whole blast width, even over empty cells,
+  // so the explosion reads as huge even when the stack itself was thin
+  if(hitCells.length){
+    const rowsUsed=new Set(hitCells.map(h=>h.r));
+    const minR=Math.min(...rowsUsed),maxR=Math.max(...rowsUsed);
+    const minC=Math.min(...hitCells.map(h=>h.c)),maxC=Math.max(...hitCells.map(h=>h.c));
+    const cx=(minC+maxC)/2*SZ+SZ/2, cy=(minR+maxR)/2*SZ+SZ/2;
+    const fireColors=['#fff3b0','#ffcc33','#ff8a1e','#ff3d00'];
+    for(let k=0;k<40;k++){
+      const ang=Math.random()*Math.PI*2,spd=Math.random()*14+4;
+      particles.push({
+        x:cx,y:cy,
+        vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-4,
+        size:Math.random()*6+2,color:fireColors[Math.floor(Math.random()*fireColors.length)],
+        life:1,decay:0.02+Math.random()*0.025
+      });
+    }
+  }
   SFX.explosion();
-  shake(9,26);
-  flashBoard('#ff6a1a',0.5);
+  shake(16,34);
+  flashBoard('radial-gradient(circle at 50% 30%,#fff6d8,#ff9a1e 45%,#ff2d00 75%)',0.85);
+  setTimeout(()=>flashBoard('#ff3d00',0.35),90);
+  const wrapEl=document.getElementById('wrap');
+  wrapEl.classList.remove('explosion-punch');
+  void wrapEl.offsetWidth;
+  wrapEl.classList.add('explosion-punch');
+  showBigBanner('BOOM!!','#ff5a1e');
   spawnPopup('BOOM!!');
+  if(particles.length>500)particles.splice(0,particles.length-500);
+}
+
+function pickChaosEffect(exclude){
+  // weighted pick: 爆発 shows up much more often than the rest
+  const weights=CHAOS_EFFECTS.map(e=>e==='爆発'?4:1);
+  let total=0;
+  for(let i=0;i<CHAOS_EFFECTS.length;i++){if(CHAOS_EFFECTS[i]!==exclude)total+=weights[i];}
+  let roll=Math.random()*total;
+  for(let i=0;i<CHAOS_EFFECTS.length;i++){
+    const e=CHAOS_EFFECTS[i];
+    if(e===exclude)continue;
+    roll-=weights[i];
+    if(roll<=0)return e;
+  }
+  return CHAOS_EFFECTS[CHAOS_EFFECTS.length-1];
 }
 
 function triggerChaos(){
@@ -552,14 +610,10 @@ function triggerChaos(){
   document.getElementById('wrap').classList.add('chaos-glow');
   SFX.chaos();
 
-  const effects=[CHAOS_EFFECTS[Math.floor(Math.random()*CHAOS_EFFECTS.length)]];
-  // the more chaos has already struck, the higher the chance of a second effect stacking
-  const stackChance=Math.min(0.75,0.1+chaosCount*0.08+level*0.02);
-  if(Math.random()<stackChance){
-    let second;
-    do{second=CHAOS_EFFECTS[Math.floor(Math.random()*CHAOS_EFFECTS.length)];}while(second===effects[0]);
-    effects.push(second);
-  }
+  // always two distinct effects at once, with 爆発 weighted to appear far more often
+  const first=pickChaosEffect(null);
+  const second=pickChaosEffect(first);
+  const effects=[first,second];
 
   chaosEffect=effects.join(' + ');
   document.getElementById('chaos-warn').style.display='block';
@@ -618,8 +672,14 @@ function flashBoard(color='#ffffff',opacity=0.3){
 function showClearBanner(cleared){
   if(cleared<2)return;
   const label=cleared===2?'DOUBLE!':cleared===3?'TRIPLE!':'QUAD!!';
+  showBigBanner(label);
+}
+
+function showBigBanner(text,color){
   const b=document.getElementById('clear-banner');
-  b.textContent=label;
+  b.textContent=text;
+  b.style.color=color||'#fff';
+  b.style.textShadow=color?`0 0 18px ${color},0 0 46px ${color}`:'';
   b.classList.remove('burst');
   void b.offsetWidth;
   b.classList.add('burst');
