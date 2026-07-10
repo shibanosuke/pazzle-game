@@ -53,7 +53,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
   100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}
 }
 #keys{font-family:var(--f-display);font-size:11px;color:var(--muted);line-height:1.6;letter-spacing:.01em;text-align:center;max-width:520px}
-#version-footer{font-family:var(--f-display);font-size:10px;color:var(--muted);opacity:.55;letter-spacing:.04em;text-align:center;margin-top:2px}
+#version-footer{font-family:var(--f-display);font-size:10px;color:#fff;background:#000000;opacity:1;letter-spacing:.04em;text-align:center;margin-top:4px;padding:3px 10px;border-radius:6px;display:inline-block}
 #controls{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,28px);width:100%;flex-wrap:wrap;padding:6px 0}
 .ctrl-col{display:flex;flex-direction:column;align-items:center;gap:8px}
 .ctrl-group{display:flex;gap:8px}
@@ -182,7 +182,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
     <div id="keys">
       ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り
     </div>
-    <div id="version-footer">Latest Update: 2026.07.08 (v4.5)</div>
+    <div id="version-footer">Latest Update: 2026.07.10 (v4.6)</div>
   </div>
 </div>
 
@@ -528,11 +528,17 @@ function explodeStack(){
   for(let r=0;r<ROWS;r++){if(board[r].some(c=>c)){top=r;break;}}
   const hitCells=[];
   if(top<ROWS){
-    const blastRows=Math.min(6,ROWS-top);
-    const width=Math.min(COLS,6+Math.floor(Math.random()*(COLS-5)));
-    const startCol=Math.floor(Math.random()*(COLS-width+1));
-    for(let r=top;r<top+blastRows;r++){
-      for(let c=startCol;c<startCol+width;c++){
+    const blastRows=Math.min(2+Math.floor(Math.random()*2),ROWS-top); // 2-3 rows
+    const baseWidth=Math.min(COLS,2+Math.floor(Math.random()*3)); // 2-4 cols
+    const startCol=Math.floor(Math.random()*(COLS-baseWidth+1));
+    for(let ri=0;ri<blastRows;ri++){
+      const r=top+ri;
+      // slight jaggedness: each row's span wobbles a little instead of forming a clean rectangle
+      const jitter=Math.floor(Math.random()*3)-1; // -1, 0, or 1
+      const rowStart=Math.max(0,startCol+(Math.random()<0.5?jitter:0));
+      const rowWidth=Math.max(1,baseWidth+(Math.random()<0.5?jitter:0));
+      for(let c=rowStart;c<rowStart+rowWidth&&c<COLS;c++){
+        if(Math.random()<0.15)continue; // small chance to leave an uneven gap
         if(board[r][c]){hitCells.push({r,c,color:board[r][c]});board[r][c]=0;}
       }
     }
@@ -587,18 +593,8 @@ function explodeStack(){
 }
 
 function pickChaosEffect(exclude){
-  // weighted pick: 爆発 shows up much more often than the rest
-  const weights=CHAOS_EFFECTS.map(e=>e==='爆発'?4:1);
-  let total=0;
-  for(let i=0;i<CHAOS_EFFECTS.length;i++){if(CHAOS_EFFECTS[i]!==exclude)total+=weights[i];}
-  let roll=Math.random()*total;
-  for(let i=0;i<CHAOS_EFFECTS.length;i++){
-    const e=CHAOS_EFFECTS[i];
-    if(e===exclude)continue;
-    roll-=weights[i];
-    if(roll<=0)return e;
-  }
-  return CHAOS_EFFECTS[CHAOS_EFFECTS.length-1];
+  const pool=CHAOS_EFFECTS.filter(e=>e!==exclude);
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 
 function triggerChaos(){
