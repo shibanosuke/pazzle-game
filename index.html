@@ -154,12 +154,13 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
           <div class="panel-title">カオスゲージ</div>
           <div class="gauge" style="height:8px;margin-top:0"><div id="chaos-bar" class="gauge-fill" style="background:linear-gradient(90deg,var(--warn),#fff3b0)"></div></div>
           <div id="effect-label"></div>
+          <div class="small-label" id="chaos-countdown">次まで: --秒</div>
         </div>
       </div>
     </div>
 
     <div id="keys">
-      ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り&nbsp; ｜ スマホ: 盤面をタップで回転・スワイプで移動/ハードドロップ
+      ← → 移動&nbsp; ↑ 回転&nbsp; ↓ ソフトドロップ&nbsp; Space ハードドロップ&nbsp; Shift ホールド&nbsp; Z 反時計回り
     </div>
   </div>
 </div>
@@ -182,6 +183,7 @@ const COLORS=['#4ec9ff','#ffcc00','#b388ff','#3d5afe','#ff6b35','#00e676','#ff44
 const CHAOS_EFFECTS=['反転','暗転','地震','倍速','ガーベジ','虹色','テレポート','乱回転','巨大化','爆発','ワンパターン'];
 let board,piece,nextQueue,hold,holdUsed,score,lines,level,combo,chaosGauge,chaosActive,chaosTimer,chaosEffect,gameRunning,gameOver,animId,dropTimer,dropInterval,darkMode,invertMode,quakeX,quakeTimer;
 let chaosCount,garbageMode,rainbowMode,teleportMode,randRotateMode,giantMode,darkFlicker,chaosIntervals,hueBase;
+let chaosElapsed=0,lastFrameTs=null;
 let monoMode=false,monoShapeIndex=0;
 let particles=[],popups=[],shakeTimer=0,shakeAmp=0,clearingRows=[],locking=false;
 
@@ -214,28 +216,41 @@ function noiseBurst(dur=0.35,vol=0.2,delay=0){
   src.connect(g);g.connect(audioCtx.destination);
   src.start(t);
 }
+// soft, round "poko / pako / peko" toy-pop sound: quick attack, gentle pitch bend, soft decay
+function poko(freq,dur=0.12,vol=0.14,bend=0.85,type='sine',delay=0){
+  if(!audioCtx)return;
+  const t=audioCtx.currentTime+delay;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;
+  o.frequency.setValueAtTime(freq,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(40,freq*bend),t+dur);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start(t);o.stop(t+dur+0.03);
+}
 const SFX={
-  move:()=>beep(220,0.03,'square',0.02),
-  rotate:()=>beep(330,0.05,'square',0.03),
-  softdrop:()=>beep(180,0.03,'square',0.02),
-  harddrop:()=>{beep(140,0.1,'square',0.06,60);},
-  lock:()=>beep(200,0.05,'triangle',0.04),
-  hold:()=>beep(440,0.06,'sine',0.04),
-  clear1:()=>{beep(523,0.09,'square',0.05);beep(659,0.09,'square',0.05,null,0.07);},
-  clear2:()=>{beep(523,0.08,'square',0.05);beep(659,0.08,'square',0.05,null,0.06);beep(784,0.12,'square',0.05,null,0.12);},
-  quad:()=>{[523,659,784,1047].forEach((f,i)=>beep(f,0.12,'square',0.06,null,i*0.07));},
-  levelup:()=>{[440,554,659,880].forEach((f,i)=>beep(f,0.1,'triangle',0.05,null,i*0.06));},
-  chaos:()=>{beep(880,0.3,'sawtooth',0.05,220);beep(880,0.3,'sawtooth',0.04,220,0.15);},
-  gameover:()=>{[392,330,262,196].forEach((f,i)=>beep(f,0.22,'triangle',0.06,null,i*0.16));},
-  garbageAdd:()=>{beep(130,0.16,'sawtooth',0.06,65);},
+  move:()=>poko(680,0.05,0.07,0.92,'sine'),
+  rotate:()=>poko(640,0.07,0.09,1.18,'triangle'),
+  softdrop:()=>poko(480,0.05,0.06,0.88,'sine'),
+  harddrop:()=>{poko(260,0.16,0.17,0.55,'sine');poko(150,0.14,0.11,0.7,'sine',0.02);},
+  lock:()=>poko(380,0.08,0.09,0.8,'triangle'),
+  hold:()=>poko(760,0.09,0.11,1.05,'sine'),
+  clear1:()=>{poko(600,0.09,0.12,0.95,'sine');poko(820,0.1,0.12,1.02,'sine',0.08);},
+  clear2:()=>{poko(560,0.08,0.11,0.95,'sine');poko(700,0.08,0.11,0.98,'triangle',0.07);poko(880,0.12,0.13,1.05,'sine',0.14);},
+  quad:()=>{[523,659,784,1047].forEach((f,i)=>poko(f,0.11,0.13,i%2?1.05:0.97,i%2?'triangle':'sine',i*0.08));},
+  levelup:()=>{[500,600,720,900].forEach((f,i,a)=>poko(f,i===a.length-1?0.22:0.1,0.12,i===a.length-1?1.3:1,'sine',i*0.09));},
+  chaos:()=>{poko(700,0.11,0.13,0.75,'sine');poko(500,0.11,0.13,0.75,'sine',0.13);poko(700,0.11,0.13,0.75,'sine',0.26);},
+  gameover:()=>{[480,380,300,230].forEach((f,i)=>poko(f,0.2,0.1,0.8,'sine',i*0.15));},
+  garbageAdd:()=>poko(210,0.18,0.13,0.6,'sine'),
   explosion:()=>{
-    noiseBurst(0.55,0.3);
-    noiseBurst(0.25,0.22,0.05);
-    beep(65,0.45,'sawtooth',0.12,25);
-    beep(45,0.6,'sine',0.1,18,0.05);
-    beep(180,0.12,'square',0.08,40,0.02);
+    noiseBurst(0.3,0.16);
+    poko(160,0.3,0.2,0.5,'sine');
+    poko(100,0.4,0.16,0.55,'sine',0.03);
+    poko(90,0.3,0.12,0.6,'triangle',0.09);
   },
-  mono:()=>{beep(300,0.06,'square',0.04);beep(300,0.06,'square',0.04,null,0.09);beep(300,0.09,'square',0.04,null,0.18);},
+  mono:()=>{poko(480,0.06,0.09,1,'sine');poko(480,0.06,0.09,1,'sine',0.09);poko(480,0.09,0.1,1,'sine',0.18);},
 };
 
 const canvas=document.getElementById('board');
@@ -260,6 +275,12 @@ function calcDropInterval(lvl){
   return Math.max(60,Math.round(800*Math.pow(0.87,lvl-1)));
 }
 
+function calcChaosIntervalMs(lvl){
+  // chaos now fires on a fixed clock instead of via line clears; comes a little
+  // more often as the level rises, floor at 12s so it never gets absurd
+  return Math.max(12000,25000-(lvl-1)*800);
+}
+
 function clearChaosIntervals(){
   (chaosIntervals||[]).forEach(id=>clearInterval(id));
   chaosIntervals=[];
@@ -267,7 +288,7 @@ function clearChaosIntervals(){
 
 function startGame(){
   board=newBoard();nextQueue=[];hold=null;holdUsed=false;
-  score=0;lines=0;level=1;combo=0;chaosGauge=0;chaosActive=false;chaosEffect='';chaosCount=0;
+  score=0;lines=0;level=1;combo=0;chaosGauge=0;chaosActive=false;chaosEffect='';chaosCount=0;chaosElapsed=0;lastFrameTs=null;
   gameRunning=true;gameOver=false;darkMode=false;invertMode=false;quakeX=0;quakeTimer=0;
   garbageMode=false;rainbowMode=false;teleportMode=false;randRotateMode=false;giantMode=false;darkFlicker=false;hueBase=0;monoMode=false;
   particles=[];popups=[];shakeTimer=0;shakeAmp=0;clearingRows=[];locking=false;
@@ -281,7 +302,7 @@ function startGame(){
   if(animId)cancelAnimationFrame(animId);
   clearTimeout(dropTimer);
   schedDrop();
-  loop();
+  animId=requestAnimationFrame(loop);
 }
 
 function schedDrop(){
@@ -385,9 +406,6 @@ function applyClearScore(cleared){
   lines+=cleared;
   level=Math.floor(lines/10)+1;
   if(!chaosActive)dropInterval=calcDropInterval(level);
-  // gauge fills faster the higher the level, so chaos comes more often as the game escalates
-  chaosGauge=Math.min(100,chaosGauge+cleared*18+Math.floor(level*1.2));
-  if(chaosGauge>=100&&!chaosActive)triggerChaos();
   if(level>prevLevel){showLevelUp();SFX.levelup();}
   if(cleared>=4)SFX.quad();else if(cleared>=2)SFX.clear2();else SFX.clear1();
   spawnPopup('+'+pts.toLocaleString());
@@ -491,7 +509,10 @@ function applyChaosEffect(eff){
   }
   else if(eff==='ワンパターン'){
     monoMode=true;
-    monoShapeIndex=Math.floor(Math.random()*SHAPES.length);
+    // the 7-cell U special piece (index 7) doesn't tile well on its own —
+    // repeating only that shape can unfairly top the board out, so it's excluded here
+    const monoCandidates=SHAPES.map((_,i)=>i).filter(i=>i!==7);
+    monoShapeIndex=monoCandidates[Math.floor(Math.random()*monoCandidates.length)];
     // immediately overwrite the upcoming queue so the streak starts right away,
     // not just whenever the existing queue happens to cycle out
     nextQueue=nextQueue.map(()=>randPiece());
@@ -576,7 +597,7 @@ function pickChaosEffect(exclude){
 }
 
 function triggerChaos(){
-  chaosActive=true;chaosGauge=0;chaosCount++;
+  chaosActive=true;chaosGauge=0;chaosElapsed=0;chaosCount++;
   clearChaosIntervals();
   darkMode=invertMode=giantMode=darkFlicker=false;
   garbageMode=rainbowMode=teleportMode=randRotateMode=monoMode=false;
@@ -805,10 +826,40 @@ function endGame(){
   ov.style.display='flex';
 }
 
-function loop(){
+function loop(ts){
   if(!gameRunning&&!gameOver)return;
+  if(gameRunning){
+    if(lastFrameTs==null)lastFrameTs=ts;
+    const dt=Math.max(0,Math.min(200,ts-lastFrameTs)); // clamp to avoid huge jumps (tab backgrounded etc.)
+    lastFrameTs=ts;
+    if(!chaosActive&&!locking){
+      chaosElapsed+=dt;
+      const interval=calcChaosIntervalMs(level);
+      chaosGauge=Math.min(100,(chaosElapsed/interval)*100);
+      if(chaosElapsed>=interval){
+        chaosElapsed=0;
+        triggerChaos();
+      }
+    }
+    updateChaosClockUI();
+  } else {
+    lastFrameTs=null;
+  }
   draw();
   if(gameRunning)animId=requestAnimationFrame(loop);
+}
+
+function updateChaosClockUI(){
+  document.getElementById('chaos-bar').style.width=chaosGauge+'%';
+  const el=document.getElementById('chaos-countdown');
+  if(!el)return;
+  if(chaosActive){
+    el.textContent='発動中！';
+  }else{
+    const interval=calcChaosIntervalMs(level);
+    const secsLeft=Math.max(0,Math.ceil((interval-chaosElapsed)/1000));
+    el.textContent='次まで: '+secsLeft+'秒';
+  }
 }
 
 // ---- Input repeat system (DAS-style hold-to-repeat), shared by keyboard and on-screen buttons ----
