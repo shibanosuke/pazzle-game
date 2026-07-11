@@ -1,5 +1,10 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 #app{
   --sky-top:#5ec6f0;--sky-bottom:#8fe28a;
@@ -34,12 +39,12 @@ canvas{display:block;border:0.5px solid rgba(255,255,255,.08);border-radius:4px;
 .panel{position:relative;overflow:hidden;background:var(--panel);border:2.5px solid var(--panel-border);border-radius:14px;padding:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 0 rgba(190,110,0,.35),0 4px 10px rgba(0,0,0,.2),0 0 18px rgba(255,177,0,.28)}
 .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.6}
 .panel::after{content:'';position:absolute;top:-40%;left:-60%;width:70%;height:220%;background:linear-gradient(75deg,transparent 35%,rgba(255,255,255,.5) 48%,transparent 60%);pointer-events:none}
-.panel-title{font-family:var(--f-display);font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.09em;font-weight:800}
-.big-num{font-family:var(--f-pixel);font-size:16px;line-height:1.5;font-weight:400;color:var(--text);text-shadow:0 1px 0 rgba(255,255,255,.5);transition:transform .15s ease}
+.panel-title{font-family:var(--f-display);font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-weight:400}
+.big-num{font-family:var(--f-pixel);font-size:17px;line-height:1.5;font-weight:400;color:var(--text);text-shadow:0 1px 0 rgba(255,255,255,.5);transition:transform .15s ease}
 .big-num.pop{transform:scale(1.22)}
 #score{color:#0e6fa8;text-shadow:0 1px 0 rgba(255,255,255,.6),0 0 10px rgba(31,164,232,.45)}
 #lines{color:#1f7a2e;text-shadow:0 1px 0 rgba(255,255,255,.6),0 0 10px rgba(59,181,74,.45)}
-.small-label{font-family:var(--f-display);font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:.03em;font-weight:600}
+.small-label{font-family:var(--f-display);font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:.02em;font-weight:400}
 .gauge{position:relative;height:7px;background:rgba(0,0,0,.12);border-radius:4px;overflow:hidden;margin-top:8px}
 .gauge-fill{position:relative;height:100%;border-radius:4px;width:0%;transition:width .25s ease;box-shadow:0 0 8px rgba(255,255,255,.5)}
 .gauge-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);width:40%;animation:gauge-shine 2.2s linear infinite}
@@ -49,8 +54,8 @@ canvas{display:block;border:0.5px solid rgba(255,255,255,.08);border-radius:4px;
 #next-canvas{display:block;margin:0 auto}
 #hold-canvas{display:block;margin:0 auto}
 .danger-badge{background:rgba(255,61,110,.15);color:var(--accent2);font-size:11px;padding:3px 8px;border-radius:6px;display:none}
-#effect-label{font-family:var(--f-display);font-size:11px;color:#b6510a;min-height:14px;margin-top:4px;font-weight:800;letter-spacing:.02em}
-button.start-btn{width:100%;padding:11px;border-radius:12px;border:3px solid #fff3c4;background:linear-gradient(180deg,#ff7a3d,#ff4d1f);color:#fff;font-family:var(--f-display);font-size:15px;font-weight:800;letter-spacing:.04em;cursor:pointer;box-shadow:0 4px 0 #c73d10,0 6px 14px rgba(0,0,0,.3),0 0 0 rgba(255,140,60,0);text-shadow:0 1px 2px rgba(0,0,0,.25);animation:btn-glow 1.8s ease-in-out infinite}
+#effect-label{font-family:var(--f-display);font-size:11px;color:#b6510a;min-height:14px;margin-top:4px;font-weight:400;letter-spacing:.02em}
+button.start-btn{width:100%;padding:11px;border-radius:12px;border:3px solid #fff3c4;background:linear-gradient(180deg,#ff7a3d,#ff4d1f);color:#fff;font-family:var(--f-display);font-size:15px;font-weight:400;letter-spacing:.04em;cursor:pointer;box-shadow:0 4px 0 #c73d10,0 6px 14px rgba(0,0,0,.3),0 0 0 rgba(255,140,60,0);text-shadow:0 1px 2px rgba(0,0,0,.25);animation:btn-glow 1.8s ease-in-out infinite}
 @keyframes btn-glow{0%,100%{box-shadow:0 4px 0 #c73d10,0 6px 14px rgba(0,0,0,.3),0 0 10px rgba(255,140,60,.35)}50%{box-shadow:0 4px 0 #c73d10,0 6px 14px rgba(0,0,0,.3),0 0 26px rgba(255,140,60,.8)}}
 button.start-btn:hover{filter:brightness(1.06)}
 button.start-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #c73d10,0 3px 8px rgba(0,0,0,.3)}
@@ -74,9 +79,9 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
   45%{opacity:1;transform:translate(-50%,-50%) scale(1)}
   100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}
 }
-#keys{font-family:var(--f-display);font-size:11px;color:#7a5a10;line-height:1.6;letter-spacing:.01em;text-align:center;max-width:520px;font-weight:600}
+#keys{font-family:var(--f-display);font-size:11px;color:#7a5a10;line-height:1.6;letter-spacing:.01em;text-align:center;max-width:520px;font-weight:400}
 #version-footer{font-family:var(--f-display);font-size:10px;color:#fff;background:#000000;opacity:.85;letter-spacing:.04em;text-align:center;padding:3px 10px;border-radius:6px;display:inline-block;margin-bottom:2px;box-shadow:0 0 10px rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.4)}
-#chaos-warn{font-family:var(--f-display);background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,238,190,.6));border:2px solid #ff8f1f;color:#b6510a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;letter-spacing:.03em;display:none;box-shadow:0 0 14px rgba(255,143,31,.5);animation:chaos-pulse 0.6s ease-in-out infinite}
+#chaos-warn{font-family:var(--f-display);background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,238,190,.6));border:2px solid #ff8f1f;color:#b6510a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:400;letter-spacing:.03em;display:none;box-shadow:0 0 14px rgba(255,143,31,.5);animation:chaos-pulse 0.6s ease-in-out infinite}
 @keyframes chaos-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.03)}}
 #combo{display:inline-block}
 #combo.combo-hot{color:var(--accent2);text-shadow:0 0 14px currentColor}
@@ -102,7 +107,7 @@ canvas#board{width:100%;height:auto;aspect-ratio:1/2;border:2px solid #fff;box-s
 
 <div id="app">
   <div id="game-shell">
-    <div id="version-footer">Latest Update: 2026.07.11 (v5.0)</div>
+    <div id="version-footer">Latest Update: 2026.07.11 (v5.0)<span id="font-status"></span></div>
     <div id="game-row">
       <div id="side-left" class="side">
         <div class="panel">
@@ -884,4 +889,19 @@ canvas.addEventListener('touchend',e=>{
   }
   touchX=touchY=touchStartX=touchStartY=null;
 });
+
+// ---- Font load diagnostic: shows directly on screen whether the web font actually loaded,
+// so this can be checked at a glance (e.g. via screenshot) without opening dev tools ----
+(function(){
+  const statusEl=document.getElementById('font-status');
+  if(!statusEl||!window.FontFace||!document.fonts){statusEl&&(statusEl.textContent=' | Font check: unsupported');return;}
+  Promise.all([
+    document.fonts.load("16px 'Mochiy Pop One'").catch(()=>[]),
+    document.fonts.load("700 16px 'M PLUS Rounded 1c'").catch(()=>[])
+  ]).then(()=>document.fonts.ready).then(()=>{
+    const mochiOk=document.fonts.check("16px 'Mochiy Pop One'");
+    const mplusOk=document.fonts.check("700 16px 'M PLUS Rounded 1c'");
+    statusEl.textContent=' | Font: '+(mochiOk?'Mochiy OK':(mplusOk?'Mochiy NG / M+PLUS OK':'both NG (fallback)'));
+  }).catch(()=>{statusEl.textContent=' | Font check: error';});
+})();
 </script>
